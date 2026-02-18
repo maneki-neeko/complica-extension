@@ -80,55 +80,78 @@
     // ── On-demand detection: scan current DOM ──
     function detectOnPage() {
         const alternatives = document.querySelectorAll('.question__alternative');
-        if (alternatives.length === 0) {
+        const selectors = document.querySelectorAll('select.selector');
+
+        if (alternatives.length === 0 && selectors.length === 0) {
             showToast('Nenhuma alternativa encontrada na página atual.', 'warn');
-            console.log('[Descomplica Extension] No .question__alternative elements found on current view.');
+            console.log('[Descomplica Extension] No .question__alternative or .selector elements found on current view.');
             return;
         }
 
-        console.log(`[Descomplica Extension] Detect: ${alternatives.length} alternatives on page, ${correctAssertionIds.size} correct IDs stored, ${assertionDataMap.size} assertion texts stored.`);
-
-        // Clear previous highlights
-        alternatives.forEach(alt => {
-            alt.style.removeProperty('border');
-            alt.style.removeProperty('background-color');
-            alt.style.removeProperty('box-shadow');
-        });
+        console.log(`[Descomplica Extension] Detect: ${alternatives.length} alternatives, ${selectors.length} selects on page, ${correctAssertionIds.size} correct IDs stored, ${assertionDataMap.size} assertion texts stored.`);
 
         let found = false;
 
-        for (let [assertionId, info] of assertionDataMap.entries()) {
-            if (!correctAssertionIds.has(assertionId)) continue;
+        // ── Case 1: .question__alternative elements (text-based match) ──
+        if (alternatives.length > 0) {
+            // Clear previous highlights
+            alternatives.forEach(alt => {
+                alt.style.removeProperty('border');
+                alt.style.removeProperty('background-color');
+                alt.style.removeProperty('box-shadow');
+            });
 
-            const targetText = normalize(stripHtml(info.text));
-            if (!targetText) continue;
+            for (let [assertionId, info] of assertionDataMap.entries()) {
+                if (!correctAssertionIds.has(assertionId)) continue;
 
-            for (let alt of alternatives) {
-                const altText = normalize(alt.innerText);
+                const targetText = normalize(stripHtml(info.text));
+                if (!targetText) continue;
 
-                // Debug: find first difference
-                if (altText.length > 10 && targetText.length > 10 && altText.substring(0, 10) === targetText.substring(0, 10)) {
-                    for (let i = 0; i < Math.max(altText.length, targetText.length); i++) {
-                        if (altText[i] !== targetText[i]) {
-                            console.log(`[Descomplica Extension] DIFF at pos ${i}: alt='${altText[i]}' (${altText.charCodeAt(i)}) vs target='${targetText[i]}' (${targetText.charCodeAt(i)})`);
-                            console.log(`[Descomplica Extension] Context: alt[...${altText.substring(Math.max(0, i - 5), i + 5)}...] target[...${targetText.substring(Math.max(0, i - 5), i + 5)}...]`);
-                            break;
-                        }
+                for (let alt of alternatives) {
+                    const altText = normalize(alt.innerText);
+
+                    if (altText.includes(targetText) || targetText.includes(altText)) {
+                        console.log('%c[Descomplica Extension] ✔ CORRECT ANSWER:', 'color: #00e676; font-size: 16px; font-weight: bold;', altText);
+                        alt.style.border = '3px solid #00e676';
+                        alt.style.backgroundColor = 'rgba(0, 230, 118, 0.12)';
+                        alt.style.boxShadow = '0 0 12px rgba(0, 230, 118, 0.3)';
+                        found = true;
                     }
-                }
-
-                if (altText.includes(targetText) || targetText.includes(altText)) {
-                    console.log('%c[Descomplica Extension] ✔ CORRECT ANSWER:', 'color: #00e676; font-size: 16px; font-weight: bold;', altText);
-                    alt.style.border = '3px solid #00e676';
-                    alt.style.backgroundColor = 'rgba(0, 230, 118, 0.12)';
-                    alt.style.boxShadow = '0 0 12px rgba(0, 230, 118, 0.3)';
-                    showToast('Resposta correta encontrada!', 'success');
-                    found = true;
                 }
             }
         }
 
-        if (!found) {
+        // ── Case 2: select.selector elements (ID-based match via option value) ──
+        if (selectors.length > 0) {
+            // Clear previous highlights on selects
+            selectors.forEach(sel => {
+                sel.style.removeProperty('border');
+                sel.style.removeProperty('background-color');
+                sel.style.removeProperty('box-shadow');
+            });
+
+            for (let sel of selectors) {
+                const options = sel.querySelectorAll('option');
+                for (let opt of options) {
+                    const optValue = opt.value;
+                    if (optValue && correctAssertionIds.has(optValue)) {
+                        console.log('%c[Descomplica Extension] ✔ CORRECT SELECT OPTION:', 'color: #00e676; font-size: 16px; font-weight: bold;', `ID: ${optValue} — "${opt.textContent.trim()}"`);
+                        // Auto-select the correct option
+                        sel.value = optValue;
+                        sel.dispatchEvent(new Event('change', { bubbles: true }));
+                        // Visual feedback on the select
+                        sel.style.border = '3px solid #00e676';
+                        sel.style.backgroundColor = 'rgba(0, 230, 118, 0.12)';
+                        sel.style.boxShadow = '0 0 12px rgba(0, 230, 118, 0.3)';
+                        found = true;
+                    }
+                }
+            }
+        }
+
+        if (found) {
+            showToast('Resposta(s) correta(s) encontrada(s)!', 'success');
+        } else {
             showToast('Nenhuma correspondência encontrada na tela atual.', 'info');
             console.log('[Descomplica Extension] No match found on current view.');
         }
