@@ -9,6 +9,10 @@
     // Map<assertionId (string), { text: string, position: number }>
     let assertionDataMap = new Map();
 
+    // Store assertions grouped by question for position-based matching
+    // Array of { assertions: [{ id: string, position: number, text: string }] }
+    let questionGroups = [];
+
     // ── Process assertions-corrections response ──
     function processAssertions(data) {
         if (!data || !Array.isArray(data)) return;
@@ -44,22 +48,45 @@
 
         console.log('[Descomplica Extension] Storing GraphQL question data...');
 
+        // Extract question text for later identification
+        let questionText = '';
+        if (questionData.contentsByQuestionIdList && questionData.contentsByQuestionIdList.length > 0) {
+            const qContent = questionData.contentsByQuestionIdList[0];
+            if (qContent.textByTextId && qContent.textByTextId.body) {
+                questionText = qContent.textByTextId.body;
+            }
+        }
+
+        // Build a group for this question
+        const group = { assertions: [], questionText: questionText };
+
         for (let assertion of assertions) {
             const assertionId = String(assertion.id);
+            let text = '';
 
             if (assertion.contentsByAssertionIdList && assertion.contentsByAssertionIdList.length > 0) {
                 const content = assertion.contentsByAssertionIdList[0];
                 if (content.textByTextId && content.textByTextId.body) {
+                    text = content.textByTextId.body;
                     assertionDataMap.set(assertionId, {
-                        text: content.textByTextId.body,
+                        text: text,
                         position: assertion.position
                     });
                 }
             }
+
+            group.assertions.push({
+                id: assertionId,
+                position: assertion.position,
+                text: text
+            });
         }
 
-        console.log(`[Descomplica Extension] Total stored assertions: ${assertionDataMap.size}`);
-        console.log(`[Descomplica Extension] Stored assertions: ${assertionDataMap}`);
+        // Sort by position
+        group.assertions.sort((a, b) => a.position - b.position);
+        questionGroups.push(group);
+
+        console.log(`[Descomplica Extension] Total stored assertions: ${assertionDataMap.size}, Question groups: ${questionGroups.length}`);
         updateBadge();
     }
 
@@ -88,11 +115,11 @@
             return;
         }
 
-        console.log(`[Descomplica Extension] Detect: ${alternatives.length} alternatives, ${selectors.length} selects on page, ${correctAssertionIds.size} correct IDs stored, ${assertionDataMap.size} assertion texts stored.`);
+        console.log(`[Descomplica Extension] Detect: ${alternatives.length} alternatives, ${selectors.length} selects on page, ${correctAssertionIds.size} correct IDs stored, ${assertionDataMap.size} assertion texts stored, ${questionGroups.length} question groups.`);
 
         let found = false;
 
-        // ── Case 1: .question__alternative elements (text-based match) ──
+        // ── Case 1: .question__alternative elements ──
         if (alternatives.length > 0) {
             // Clear previous highlights
             alternatives.forEach(alt => {
@@ -101,6 +128,7 @@
                 alt.style.removeProperty('box-shadow');
             });
 
+            // Strategy A: Text-based match
             for (let [assertionId, info] of assertionDataMap.entries()) {
                 if (!correctAssertionIds.has(assertionId)) continue;
 
@@ -109,13 +137,69 @@
 
                 for (let alt of alternatives) {
                     const altText = normalize(alt.innerText);
-
                     if (altText.includes(targetText) || targetText.includes(altText)) {
-                        console.log('%c[Descomplica Extension] ✔ CORRECT ANSWER:', 'color: #00e676; font-size: 16px; font-weight: bold;', altText);
+                        console.log('%c[Descomplica Extension] ✔ CORRECT ANSWER (text match):', 'color: #00e676; font-size: 16px; font-weight: bold;', altText);
                         alt.style.border = '3px solid #00e676';
                         alt.style.backgroundColor = 'rgba(0, 230, 118, 0.12)';
                         alt.style.boxShadow = '0 0 12px rgba(0, 230, 118, 0.3)';
                         found = true;
+                    }
+                }
+            }
+
+            // Strategy B: Fallback for math/LaTeX content
+            if (!found) {
+                console.log('[Descomplica Extension] Text match failed, trying fallback strategies...');
+
+                // B1: Search for assertion IDs in the DOM HTML of alternatives
+                for (let alt of alternatives) {
+                    const html = alt.outerHTML;
+                    for (let [assertionId] of assertionDataMap.entries()) {
+                        if (!correctAssertionIds.has(assertionId)) continue;
+                        if (html.includes(assertionId)) {
+                            console.log(`%c[Descomplica Extension] ✔ CORRECT ANSWER (ID in DOM: ${assertionId}):`, 'color: #00e676; font-size: 16px; font-weight: bold;', alt.innerText.trim().substring(0, 80));
+                            alt.style.border = '3px solid #00e676';
+                            alt.style.backgroundColor = 'rgba(0, 230, 118, 0.12)';
+                            alt.style.boxShadow = '0 0 12px rgba(0, 230, 118, 0.3)';
+                            found = true;
+                        }
+                    }
+                }
+
+                // B2: Question-text based group identification + position matching
+                if (!found) {
+                    const pageText = normalize(document.body.innerText);
+
+                    for (let group of questionGroups) {
+                        if (group.assertions.length !== alternatives.length) continue;
+
+                        // Check if this group has any correct assertion
+                        const correctInGroup = group.assertions.filter(a => correctAssertionIds.has(a.id));
+                        if (correctInGroup.length === 0) continue;
+
+                        // Verify this is the right group by checking if the question text is on the page
+                        if (group.questionText) {
+                            const qText = normalize(stripHtml(group.questionText));
+                            if (qText.length > 10 && !pageText.includes(qText)) {
+                                console.log(`[Descomplica Extension] Skipping group — question text not on page: "${qText.substring(0, 60)}..."`);
+                                continue;
+                            }
+                            console.log(`[Descomplica Extension] Group matched by question text: "${qText.substring(0, 60)}..."`);
+                        }
+
+                        // Highlight alternatives at the correct positions
+                        for (let correct of correctInGroup) {
+                            const idx = correct.position;
+                            if (idx >= 0 && idx < alternatives.length) {
+                                const alt = alternatives[idx];
+                                console.log(`%c[Descomplica Extension] ✔ CORRECT ANSWER (question match + position ${idx}):`, 'color: #00e676; font-size: 16px; font-weight: bold;', alt.innerText.trim().substring(0, 80));
+                                alt.style.border = '3px solid #00e676';
+                                alt.style.backgroundColor = 'rgba(0, 230, 118, 0.12)';
+                                alt.style.boxShadow = '0 0 12px rgba(0, 230, 118, 0.3)';
+                                found = true;
+                            }
+                        }
+                        if (found) break;
                     }
                 }
             }
