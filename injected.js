@@ -37,35 +37,62 @@
         updateBadge();
     }
 
-    // ── Store GraphQL question data (no DOM check here) ──
-    function processGraphQL(data) {
-        if (!data || !data.data || !data.data.questionById) return;
+    // ── Helper: extract assertion contents from either format ──
+    function getAssertionContents(assertion) {
+        // Format 1: assertionsByQuestionIdList → contentsByAssertionIdList (array)
+        if (assertion.contentsByAssertionIdList && assertion.contentsByAssertionIdList.length > 0) {
+            return assertion.contentsByAssertionIdList;
+        }
+        // Format 2: assertionsByQuestionId.nodes → contentsByAssertionId.nodes
+        if (assertion.contentsByAssertionId && assertion.contentsByAssertionId.nodes && assertion.contentsByAssertionId.nodes.length > 0) {
+            return assertion.contentsByAssertionId.nodes;
+        }
+        return [];
+    }
 
-        const questionData = data.data.questionById;
-        const assertions = questionData.assertionsByQuestionIdList;
-
-        if (!assertions || !Array.isArray(assertions)) return;
-
-        console.log('[Descomplica Extension] Storing GraphQL question data...');
-
-        // Extract question text for later identification
-        let questionText = '';
+    // ── Helper: extract question text from either format ──
+    function getQuestionText(questionData) {
+        // Format 1: contentsByQuestionIdList (array)
         if (questionData.contentsByQuestionIdList && questionData.contentsByQuestionIdList.length > 0) {
             const qContent = questionData.contentsByQuestionIdList[0];
-            if (qContent.textByTextId && qContent.textByTextId.body) {
-                questionText = qContent.textByTextId.body;
-            }
+            if (qContent.textByTextId && qContent.textByTextId.body) return qContent.textByTextId.body;
         }
+        // Format 2: contentsByQuestionId.nodes
+        if (questionData.contentsByQuestionId && questionData.contentsByQuestionId.nodes && questionData.contentsByQuestionId.nodes.length > 0) {
+            const qContent = questionData.contentsByQuestionId.nodes[0];
+            if (qContent.textByTextId && qContent.textByTextId.body) return qContent.textByTextId.body;
+        }
+        return '';
+    }
 
-        // Build a group for this question
+    // ── Helper: extract assertions array from either format ──
+    function getAssertions(questionData) {
+        // Format 1: assertionsByQuestionIdList (array)
+        if (questionData.assertionsByQuestionIdList && Array.isArray(questionData.assertionsByQuestionIdList)) {
+            return questionData.assertionsByQuestionIdList;
+        }
+        // Format 2: assertionsByQuestionId.nodes
+        if (questionData.assertionsByQuestionId && questionData.assertionsByQuestionId.nodes && Array.isArray(questionData.assertionsByQuestionId.nodes)) {
+            return questionData.assertionsByQuestionId.nodes;
+        }
+        return [];
+    }
+
+    // ── Store a single question's data ──
+    function storeQuestion(questionData) {
+        const assertions = getAssertions(questionData);
+        if (assertions.length === 0) return;
+
+        const questionText = getQuestionText(questionData);
         const group = { assertions: [], questionText: questionText };
 
         for (let assertion of assertions) {
             const assertionId = String(assertion.id);
             let text = '';
 
-            if (assertion.contentsByAssertionIdList && assertion.contentsByAssertionIdList.length > 0) {
-                const content = assertion.contentsByAssertionIdList[0];
+            const contents = getAssertionContents(assertion);
+            if (contents.length > 0) {
+                const content = contents[0];
                 if (content.textByTextId && content.textByTextId.body) {
                     text = content.textByTextId.body;
                     assertionDataMap.set(assertionId, {
@@ -82,12 +109,39 @@
             });
         }
 
-        // Sort by position
         group.assertions.sort((a, b) => a.position - b.position);
         questionGroups.push(group);
+    }
 
-        console.log(`[Descomplica Extension] Total stored assertions: ${assertionDataMap.size}, Question groups: ${questionGroups.length}`);
-        updateBadge();
+    // ── Store GraphQL question data (no DOM check here) ──
+    function processGraphQL(data) {
+        if (!data || !data.data) return;
+
+        let questionsProcessed = 0;
+
+        // Format 1: Single question — data.questionById
+        if (data.data.questionById) {
+            storeQuestion(data.data.questionById);
+            questionsProcessed++;
+        }
+
+        // Format 2: Review list — data.allLists.nodes[].listItemsByListId.nodes[].questionByQuestionId
+        if (data.data.allLists && data.data.allLists.nodes) {
+            for (let list of data.data.allLists.nodes) {
+                if (!list.listItemsByListId || !list.listItemsByListId.nodes) continue;
+                for (let listItem of list.listItemsByListId.nodes) {
+                    if (listItem.questionByQuestionId) {
+                        storeQuestion(listItem.questionByQuestionId);
+                        questionsProcessed++;
+                    }
+                }
+            }
+        }
+
+        if (questionsProcessed > 0) {
+            console.log(`[Descomplica Extension] Processed ${questionsProcessed} questions. Total assertions: ${assertionDataMap.size}, Question groups: ${questionGroups.length}`);
+            updateBadge();
+        }
     }
 
     // ── Helpers ──
