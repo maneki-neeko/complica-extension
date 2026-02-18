@@ -222,7 +222,19 @@
 
                 // B2: Question-text based group identification + position matching
                 if (!found) {
-                    const pageText = normalize(document.body.innerText);
+                    const pageText = normalize(document.body.innerText).toLowerCase();
+
+                    // Extract significant words (3+ chars, no LaTeX commands) for fuzzy matching
+                    const extractWords = (str) => {
+                        // Strip LaTeX commands first
+                        const cleaned = str
+                            .replace(/\\[a-zA-Z]+(\{[^}]*\})?/g, ' ')
+                            .replace(/[{}\\]/g, ' ');
+                        return (cleaned.match(/[a-zA-ZÀ-ÿ]{3,}/g) || []).map(w => w.toLowerCase());
+                    };
+
+                    let bestGroup = null;
+                    let bestScore = 0;
 
                     for (let group of questionGroups) {
                         if (group.assertions.length !== alternatives.length) continue;
@@ -231,17 +243,26 @@
                         const correctInGroup = group.assertions.filter(a => correctAssertionIds.has(a.id));
                         if (correctInGroup.length === 0) continue;
 
-                        // Verify this is the right group by checking if the question text is on the page
-                        if (group.questionText) {
-                            const qText = normalize(stripHtml(group.questionText));
-                            if (qText.length > 10 && !pageText.includes(qText)) {
-                                console.log(`[Descomplica Extension] Skipping group — question text not on page: "${qText.substring(0, 60)}..."`);
-                                continue;
-                            }
-                            console.log(`[Descomplica Extension] Group matched by question text: "${qText.substring(0, 60)}..."`);
-                        }
+                        if (!group.questionText) continue;
 
-                        // Highlight alternatives at the correct positions
+                        const qWords = extractWords(normalize(stripHtml(group.questionText)));
+                        if (qWords.length < 3) continue;
+
+                        const matchCount = qWords.filter(w => pageText.includes(w)).length;
+                        const score = matchCount / qWords.length;
+
+                        console.log(`[Descomplica Extension] Group question word match: ${matchCount}/${qWords.length} (${(score * 100).toFixed(0)}%) — "${qWords.slice(0, 6).join(' ')}..."`);
+
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestGroup = group;
+                        }
+                    }
+
+                    // Require at least 60% word match
+                    if (bestGroup && bestScore >= 0.6) {
+                        console.log(`[Descomplica Extension] Best group matched with ${(bestScore * 100).toFixed(0)}% word match.`);
+                        const correctInGroup = bestGroup.assertions.filter(a => correctAssertionIds.has(a.id));
                         for (let correct of correctInGroup) {
                             const idx = correct.position;
                             if (idx >= 0 && idx < alternatives.length) {
@@ -253,7 +274,6 @@
                                 found = true;
                             }
                         }
-                        if (found) break;
                     }
                 }
             }
