@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descomplica Override</title>
+    <!-- Fonte moderna direto do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            width: 320px;
+            padding: 24px;
+            background: linear-gradient(145deg, #f7f9fc, #f0f4f8);
+            color: #2d3748;
+            border-top: 5px solid #11998e;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #11998e, #38ef7d);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .version-badge {
+            background-color: #e2e8f0;
+            color: #4a5568;
+            font-size: 10px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        p.subtitle {
+            font-size: 13px;
+            color: #718096;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option {
+            display: flex;
+            align-items: flex-start;
+            background: #ffffff;
+            padding: 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(17, 153, 142, 0.15);
+        }
+
+        /* O trunfo: Quando selecionado, altera a borda inteira do Box */
+        .option:has(input[type="radio"]:checked) {
+            border-color: #11998e;
+            background-color: #f0faf8;
+        }
+
+        .option-content {
+            flex: 1;
+        }
+
+        input[type="radio"] {
+            /* Esconde o rádio padrão nativo feio */
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #cbd5e0;
+            border-radius: 50%;
+            margin-right: 12px;
+            margin-top: 2px;
+            cursor: pointer;
+            position: relative;
+            outline: none;
+            transition: border-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        input[type="radio"]:checked {
+            border-color: #11998e;
+        }
+
+        input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background-color: #11998e;
+            border-radius: 50%;
+        }
+
+        .option label {
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: #2d3748;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .badge-recommended {
+            display: inline-block;
+            background-color: #c6f6d5;
+            color: #22543d;
+            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .option small {
+            display: block;
+            color: #718096;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .warning {
+            font-size: 12px;
+            font-weight: 500;
+            color: #c53030;
+            background-color: #fff5f5;
+            border-top: 1px solid #feb2b2;
+            padding: 12px;
+            margin: 20px -24px -24px -24px;
+            text-align: center;
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h2>Descomplica Hack 🚀</h2>
+        <span class="version-badge">v2.0</span>
+    </div>
+    <p class="subtitle">Escolha o modo de funcionamento do ajudante.</p>
+
+    <div class="option-group">
+        <!-- O evento de click agora passa a funcionar na caixa (option) inteira graças ao script injetado e do label encobridor -->
+        <label class="option" for="v2">
+            <input type="radio" id="v2" name="engine" value="v2">
+            <div class="option-content">
+                <label for="v2">Atual (Automático) <span class="badge-recommended">RECOMENDADO</span></label>
+                <small>Mais rápido. Lê e seleciona a resposta na hora para você.</small>
+            </div>
+        </label>
+
+        <label class="option" for="v1">
+            <input type="radio" id="v1" name="engine" value="v1">
+            <div class="option-content">
+                <label for="v1">Legado (Manual)</label>
+                <small>Versão antiga de interceptação. Oferece controle visual via console.</small>
+            </div>
+        </label>
+
+        <label class="option" for="off">
+            <input type="radio" id="off" name="engine" value="off">
+            <div class="option-content">
+                <label for="off">Desligar Modo</label>
+                <small>Estude normalmente e teste seus conhecimentos sem a extensão.</small>
+            </div>
+        </label>
+    </div>
+
+    <div id="reload-warning" class="warning">
+        🔄 Favor recarregar a tela (F5) para aplicar!
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
