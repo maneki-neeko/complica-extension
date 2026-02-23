@@ -6,7 +6,7 @@ class QuestionStrategy {
     execute(vm) {
         if (typeof vm.getAlternativeClass !== 'function' || vm.__isOverridden) return;
 
-        console.log("[Extensão] Estratégia 'QUESTION' ativada! Sobrescrevendo...");
+        console.log("[Extension] 'QUESTION' strategy activated! Overriding...");
 
         // Guarda escopo Real do Strategy
         const self = this;

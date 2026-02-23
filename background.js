@@ -26,7 +26,7 @@ async function updateContentScripts(version) {
             await chrome.scripting.unregisterContentScripts({ ids });
         }
     } catch (e) {
-        console.error("Erro ao apagar scripts:", e);
+        console.error("Error clearing scripts:", e);
     }
 
     // Registra V1 - Roda em modo ISOLATED e escuta API Network (DOM Lifecycle Inicial)
@@ -39,8 +39,8 @@ async function updateContentScripts(version) {
                 runAt: "document_start",
                 world: "ISOLATED"
             }]);
-            console.log("V1 (Network Request Interceptor) Aplicado");
-        } catch (e) { console.error('Erro ao injetar V1:', e); }
+            console.log("V1 (Network Request Interceptor) Applied");
+        } catch (e) { console.error('Error injecting V1:', e); }
 
         // Registra V2 - Roda no MAIN Object Context com Mutation Observer & Vue Factory (DOM Lifecycle Final)
     } else if (version === 'v2') {
@@ -68,8 +68,8 @@ async function updateContentScripts(version) {
                 runAt: "document_start",
                 world: "ISOLATED"
             }]);
-            console.log("V2 (Vue Strategy Monkey Patch) Aplicado");
-        } catch (e) { console.error('Erro ao injetar V2:', e); }
+            console.log("V2 (Vue Strategy Monkey Patch) Applied");
+        } catch (e) { console.error('Error injecting V2:', e); }
     }
 
     // Se "off", nós simplismente não registramos nenhum script (apenas deixamos desregistrado e limpo em memória).

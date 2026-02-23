@@ -6,7 +6,7 @@ class ObjectiveTriviaStrategy {
     execute(vm) {
         if (typeof vm.getAlternativeClass !== 'function' || vm.__isOverridden) return;
 
-        console.log("[Extensão] Estratégia 'OBJECTIVE TRIVIA' ativada! Sobrescrevendo...");
+        console.log("[Extension] 'OBJECTIVE TRIVIA' strategy activated! Overriding...");
 
         vm.getAlternativeClass = function (e) {
             if (!e) return "";

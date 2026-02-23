@@ -6,7 +6,7 @@ class ClozeQuestionStrategy {
     execute(vm) {
         if (vm.__isOverridden || vm.replyState == "correct") return;
 
-        console.log("[Extensão] Estratégia 'CLOZE QUESTION' ativada! Preenchendo select...");
+        console.log("[Extesion] 'CLOZE QUESTION' strategy activated! Filling select...");
 
         // Aguarda a renderização dos componentes internos
         setTimeout(() => {

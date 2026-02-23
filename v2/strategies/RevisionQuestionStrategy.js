@@ -6,7 +6,7 @@ class RevisionQuestionStrategy {
     execute(vm) {
         if (typeof vm.getAlternativeClass !== 'function' || vm.__isOverridden) return;
 
-        console.log("[Extensão] Estratégia 'LISTA DE REVISÃO' ativada! Sobrescrevendo...");
+        console.log("[Extension] 'REVISION LIST' strategy activated! Overriding...");
 
         vm.getAlternativeClass = function (e) {
             // --- LÓGICA CUSTOMIZADA AQUI ---

@@ -5,12 +5,12 @@
         return;
     }
 
-    console.log("[Extensão] Observador de métodos Vue com Strategy Factory iniciado...");
+    console.log("[Extension] Vue methods observer with Strategy Factory started...");
 
     const strategyFactory = new StrategyFactory();
 
     // Função unificada para aplicar os overrides
-    function aplicarOverrides(nodeElem) {
+    function applyOverrides(nodeElem) {
         const vm = nodeElem.__vue__;
 
         if (vm && vm.$vnode && vm.$vnode.componentOptions && vm.$vnode.componentOptions.tag) {
@@ -30,17 +30,17 @@
     const observer = new MutationObserver(() => {
 
         // Procura por todos os nós criados nas alternativas listadas globalmente
-        const alternativasDOM = document.querySelectorAll('.question__alternative, .cloze-question');
+        const alternativesDOM = document.querySelectorAll('.question__alternative, .cloze-question');
 
-        alternativasDOM.forEach((tagLi) => {
-            let alvoAtual = tagLi;
+        alternativesDOM.forEach((liTag) => {
+            let currentTarget = liTag;
             // Caminhamos à procura das instâncias 'pai' na estrutura DOM que possuem as características do Vue Js
-            while (alvoAtual && alvoAtual !== document.body) {
-                if (alvoAtual.__vue__) {
-                    aplicarOverrides(alvoAtual);
+            while (currentTarget && currentTarget !== document.body) {
+                if (currentTarget.__vue__) {
+                    applyOverrides(currentTarget);
                     break;
                 }
-                alvoAtual = alvoAtual.parentElement;
+                currentTarget = currentTarget.parentElement;
             }
         });
 
